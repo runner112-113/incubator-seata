@@ -226,8 +226,10 @@ public class ConnectionProxy extends AbstractConnectionProxy {
 
 
     private void doCommit() throws SQLException {
+        // @GlobalTransaction 全局事务
         if (context.inGlobalTransaction()) {
             processGlobalTransactionCommit();
+            // @GlobalLock 需要全局锁
         } else if (context.isGlobalLockRequire()) {
             processLocalCommitWithGlobalLocks();
         } else {
