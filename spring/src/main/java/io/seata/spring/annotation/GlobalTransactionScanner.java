@@ -275,6 +275,7 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
 
         try {
             synchronized (PROXYED_SET) {
+                // 已经代理过了
                 if (PROXYED_SET.contains(beanName)) {
                     return bean;
                 }

@@ -77,6 +77,7 @@ public class ActionInterceptorHandler {
         actionContext.setDelayReport(businessAction.isDelayReport());
 
         //Creating Branch Record
+        // 包含了分支注册
         String branchId = doTccActionLogStore(method, arguments, businessAction, actionContext);
         actionContext.setBranchId(branchId);
         //MDC put branchId
@@ -91,6 +92,7 @@ public class ActionInterceptorHandler {
             if (businessAction.useTCCFence()) {
                 try {
                     // Use TCC Fence, and return the business result
+                    // try 阶段
                     return TCCFenceHandler.prepareFence(xid, Long.valueOf(branchId), actionName, targetCallback);
                 } catch (SkipCallbackWrapperException | UndeclaredThrowableException e) {
                     Throwable originException = e.getCause();
@@ -196,7 +198,8 @@ public class ActionInterceptorHandler {
         Map<String, Object> applicationContext = Collections.singletonMap(Constants.TCC_ACTION_CONTEXT, context);
         String applicationContextStr = JSON.toJSONString(applicationContext);
         try {
-            //registry branch record
+            //registry branch record  分支注册
+            // resourceId：actionName
             Long branchId = DefaultResourceManager.get().branchRegister(BranchType.TCC, actionName, null, xid,
                     applicationContextStr, null);
             return String.valueOf(branchId);

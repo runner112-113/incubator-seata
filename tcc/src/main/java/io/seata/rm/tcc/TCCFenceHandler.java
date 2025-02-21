@@ -109,6 +109,8 @@ public class TCCFenceHandler {
         return transactionTemplate.execute(status -> {
             try {
                 Connection conn = DataSourceUtils.getConnection(dataSource);
+                // 解决空回滚：
+                // 在 try 阶段 往 tcc_fence_log 表插入一条记录，status 字段值是 STATUS_TRIED，在 Rollback 阶段判断记录是否存在，如果不存在，则不执行回滚操作。
                 boolean result = insertTCCFenceLog(conn, xid, branchId, actionName, TCCFenceConstant.STATUS_TRIED);
                 LOGGER.info("TCC fence prepare result: {}. xid: {}, branchId: {}", result, xid, branchId);
                 if (result) {
@@ -146,11 +148,16 @@ public class TCCFenceHandler {
         return transactionTemplate.execute(status -> {
             try {
                 Connection conn = DataSourceUtils.getConnection(dataSource);
+                // 幂等保证
+                // 提交事务时首先会判断 tcc_fence_log 表中是否已经有记录，如果有记录，则判断事务执行状态并返回。
+                // 这样如果判断到事务的状态已经是 STATUS_COMMITTED，就不会再次提交，保证了幂等。
+                // 如果 tcc_fence_log 表中没有记录，则插入一条记录，供后面重试时判断
                 TCCFenceDO tccFenceDO = TCC_FENCE_DAO.queryTCCFenceDO(conn, xid, branchId);
                 if (tccFenceDO == null) {
                     throw new TCCFenceException(String.format("TCC fence record not exists, commit fence method failed. xid= %s, branchId= %s", xid, branchId),
                             FrameworkErrorCode.RecordNotExists);
                 }
+                // 状态为STATUS_COMMITTED 则不会再次提交
                 if (TCCFenceConstant.STATUS_COMMITTED == tccFenceDO.getStatus()) {
                     LOGGER.info("Branch transaction has already committed before. idempotency rejected. xid: {}, branchId: {}, status: {}", xid, branchId, tccFenceDO.getStatus());
                     return true;
@@ -188,12 +195,14 @@ public class TCCFenceHandler {
                 TCCFenceDO tccFenceDO = TCC_FENCE_DAO.queryTCCFenceDO(conn, xid, branchId);
                 // non_rollback
                 if (tccFenceDO == null) {
+                    // 插入防悬挂记录
                     boolean result = insertTCCFenceLog(conn, xid, branchId, actionName, TCCFenceConstant.STATUS_SUSPENDED);
                     LOGGER.info("Insert tcc fence record result: {}. xid: {}, branchId: {}", result, xid, branchId);
                     if (!result) {
                         throw new TCCFenceException(String.format("Insert tcc fence record error, rollback fence method failed. xid= %s, branchId= %s", xid, branchId),
                                 FrameworkErrorCode.InsertRecordError);
                     }
+                    // 不执行回滚逻辑
                     return true;
                 } else {
                     if (TCCFenceConstant.STATUS_ROLLBACKED == tccFenceDO.getStatus() || TCCFenceConstant.STATUS_SUSPENDED == tccFenceDO.getStatus()) {
@@ -247,6 +256,7 @@ public class TCCFenceHandler {
                                                              String xid, Long branchId, int status,
                                                              TransactionStatus transactionStatus,
                                                              Object[] args) throws Exception {
+        // 把 tcc_fence_log 表记录的 status 字段值从 STATUS_TRIED 改为 STATUS_ROLLBACKED
         boolean result = TCC_FENCE_DAO.updateTCCFenceDO(conn, xid, branchId, status, TCCFenceConstant.STATUS_TRIED);
         if (result) {
             // invoke two phase method

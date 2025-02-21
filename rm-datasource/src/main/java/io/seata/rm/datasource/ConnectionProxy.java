@@ -249,18 +249,23 @@ public class ConnectionProxy extends AbstractConnectionProxy {
 
     private void processGlobalTransactionCommit() throws SQLException {
         try {
+            // 向TC 注册分支 （包含全局锁的申请）
             register();
         } catch (TransactionException e) {
             recognizeLockKeyConflictException(e, context.buildLockKeys());
         }
         try {
+            // 计入undolog 日志
             UndoLogManagerFactory.getUndoLogManager(this.getDbType()).flushUndoLogs(this);
+            // 本地事务提交 （业务事务 + undolog入库）
             targetConnection.commit();
         } catch (Throwable ex) {
             LOGGER.error("process connectionProxy commit error: {}", ex.getMessage(), ex);
             report(false);
             throw new SQLException(ex);
         }
+        // 设置client.rm.reportSuccessEnable = true
+        // 向TC汇报本地事务情况
         if (IS_REPORT_SUCCESS_ENABLE) {
             report(true);
         }
@@ -275,6 +280,7 @@ public class ConnectionProxy extends AbstractConnectionProxy {
         Long branchId = DefaultResourceManager.get().branchRegister(BranchType.AT, getDataSourceProxy().getResourceId(),
             null, context.getXid(), context.getApplicationData(),
             context.buildLockKeys());
+        // 回填branchId
         context.setBranchId(branchId);
     }
 

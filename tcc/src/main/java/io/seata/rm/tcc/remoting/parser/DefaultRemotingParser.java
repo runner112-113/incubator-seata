@@ -198,6 +198,7 @@ public class DefaultRemotingParser {
                         tccResource.setPhaseTwoRollbackKeys(this.getTwoPhaseArgs(tccResource.getRollbackMethod(),
                                 twoPhaseBusinessAction.rollbackArgsClasses()));
                         //registry tcc resource
+                        // client cache it
                         DefaultResourceManager.get().registerResource(tccResource);
                     }
                 }
