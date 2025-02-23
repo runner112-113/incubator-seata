@@ -119,6 +119,7 @@ public class DataSourceManager extends AbstractResourceManager {
             throw new ShouldNeverHappenException(String.format("resource: %s not found",resourceId));
         }
         try {
+            // 回滚
             UndoLogManagerFactory.getUndoLogManager(dataSourceProxy.getDbType()).undo(dataSourceProxy, xid, branchId);
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("branch rollback success, xid:{}, branchId:{}", xid, branchId);

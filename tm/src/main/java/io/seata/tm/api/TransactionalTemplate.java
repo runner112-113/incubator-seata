@@ -61,6 +61,7 @@ public class TransactionalTemplate {
         // 1.2 Handle the transaction propagation.
         Propagation propagation = txInfo.getPropagation();
         SuspendedResourcesHolder suspendedResourcesHolder = null;
+        // 事务隔离级别处理
         try {
             switch (propagation) {
                 case NOT_SUPPORTED:

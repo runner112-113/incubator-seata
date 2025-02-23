@@ -89,6 +89,7 @@ public class ActionInterceptorHandler {
             //share actionContext implicitly
             BusinessActionContextUtil.setContext(actionContext);
 
+            // useTCCFence：解决幂等、空回滚、悬挂
             if (businessAction.useTCCFence()) {
                 try {
                     // Use TCC Fence, and return the business result

@@ -152,8 +152,10 @@ public class GlobalTransactionalInterceptor implements ConfigurationChangeListen
         Method specificMethod = ClassUtils.getMostSpecificMethod(methodInvocation.getMethod(), targetClass);
         if (specificMethod != null && !specificMethod.getDeclaringClass().equals(Object.class)) {
             final Method method = BridgeMethodResolver.findBridgedMethod(specificMethod);
+            // 获取@GlobalTransactional
             final GlobalTransactional globalTransactionalAnnotation =
                 getAnnotation(method, targetClass, GlobalTransactional.class);
+            // 获取@GlobalLock
             final GlobalLock globalLockAnnotation = getAnnotation(method, targetClass, GlobalLock.class);
             boolean localDisable = disable || (ATOMIC_DEGRADE_CHECK.get() && degradeNum >= degradeCheckAllowTimes);
             if (!localDisable) {
@@ -172,8 +174,10 @@ public class GlobalTransactionalInterceptor implements ConfigurationChangeListen
                     } else {
                         transactional = this.aspectTransactional;
                     }
+                    // 处理全局事务
                     return handleGlobalTransaction(methodInvocation, transactional);
                 } else if (globalLockAnnotation != null) {
+                    // 处理全局锁
                     return handleGlobalLock(methodInvocation, globalLockAnnotation);
                 }
             }
